@@ -26,26 +26,29 @@ class Interpreter:
         self.pos: int = 0
         self.current_token: Token | None = None
 
-    def error(self, c: str):
+    def _error(self, c: str):
         raise TypeError(f"Invalid token {c}")
+
+    def _skip_whitespace_if_any(self):
+        while self.text[self.pos].isspace():
+            self.pos += 1
+
+    def _integer(self):
+        pre_pos = self.pos
+        while self.text[self.pos].isdigit():
+            self.pos += 1
+            if self.pos >= len(self.text) or not self.text[self.pos].isdigit():
+                return Token(TokenType.INTEGER, int(self.text[pre_pos:self.pos]))
 
     def get_next_token(self):
         if self.pos > len(self.text) - 1:
             return Token(TokenType.EOF, None)
 
-        pre_pos = self.pos
+        self._skip_whitespace_if_any()
         curr_char: str = self.text[self.pos]
 
-        while curr_char == ' ':
-            self.pos += 1
-            curr_char = self.text[self.pos]
-
-        while curr_char.isdigit():
-            self.pos += 1
-            if self.pos < len(self.text) and self.text[self.pos].isdigit():
-                curr_char = self.text[self.pos]
-            else:
-                return Token(TokenType.INTEGER, int(self.text[pre_pos:self.pos]))
+        if curr_char.isdigit():
+            return self._integer()
 
         if curr_char == '+':
             self.pos += 1
@@ -55,24 +58,24 @@ class Interpreter:
             self.pos += 1
             return Token(TokenType.MINUS, curr_char)
 
-        self.error(curr_char)
+        self._error(curr_char)
 
-    def eat(self, token_types: set[TokenType]):
+    def _eat(self, token_types: set[TokenType]):
         if self.current_token.type in token_types:
             self.current_token = self.get_next_token()
         else:
-            self.error(self.current_token.value)
+            self._error(self.current_token.value)
 
     def expr(self) -> int:
         self.current_token = self.get_next_token()
         left = self.current_token
-        self.eat({TokenType.INTEGER})
+        self._eat({TokenType.INTEGER})
 
         op = self.current_token
-        self.eat({TokenType.PLUS, TokenType.MINUS})
+        self._eat({TokenType.PLUS, TokenType.MINUS})
 
         right = self.current_token
-        self.eat({TokenType.INTEGER})
+        self._eat({TokenType.INTEGER})
 
         if op.type == TokenType.PLUS:
             result = left.value + right.value
